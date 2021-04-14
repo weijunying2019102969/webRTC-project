@@ -1,0 +1,30 @@
+{
+    "name": "MCNAS",
+    "manifest_version": 2,
+    "version": "1.0",
+    "description": "no description.",
+    "permissions": [
+        "unlimitedStorage",
+        "tabs",
+        "storage",
+        "activeTab",
+        "webRequest",
+        "webRequestBlocking",
+        "<all_urls>"
+    ],
+    "background": {
+        "scripts": [
+            "background_scripts/interaction.js"
+        ]
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "http://192.168.1.109/"
+            ],
+            "js": [
+                "content_scripts/alterpage.js"
+            ]
+        }
+    ]
+}
