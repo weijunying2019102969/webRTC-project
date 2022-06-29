@@ -1,0 +1,653 @@
+<?php
+// echo 'student_speed!!!!!<br>';
+if (isset ( $_POST ["username"] ) && isset ( $_POST ["time"] ) && isset ( $_POST ["start_time"] ) && isset ( $_POST ["start_time"] )) {
+	require_once ('sys_conf.inc.php');
+	function getIP() {
+		if (getenv ( "HTTP_CLIENT_IP" ))
+			$ip = getenv ( "HTTP_CLIENT_IP" );
+		else if (getenv ( "HTTP_X_FORWARDED_FOR" ))
+			$ip = getenv ( "HTTP_X_FORWARDED_FOR" );
+		else if (getenv ( "REMOTE_ADDR" ))
+			$ip = getenv ( "REMOTE_ADDR" );
+		else
+			$ip = "Unknow";
+		return $ip;
+	}
+
+	//add by qijl 2015-03-22
+
+	function isStatistics($username,$DBHOST, $DBUSER, $DBPWD, $DBNAME)
+	{
+		$link_id = mysql_connect ( $DBHOST, $DBUSER, $DBPWD );
+		mysql_select_db ( $DBNAME );
+		mysql_query ( "set names UTF8" );
+		$sql_url_recent = "select * from sensor where id_sensor=" . $username;
+		$result_url_recent = mysql_query ( $sql_url_recent );
+		while ( $row_url_recent = mysql_fetch_array ( $result_url_recent ) ) {
+			if($row_url_recent ["isStatistics"]==1)
+			{
+				return 1;
+			}
+			else {
+				return 0;
+			}
+		}
+	}
+
+	function isShow($username,$DBHOST, $DBUSER, $DBPWD, $DBNAME)
+	{
+		$link_id = mysql_connect ( $DBHOST, $DBUSER, $DBPWD );
+		mysql_select_db ( $DBNAME );
+		mysql_query ( "set names UTF8" );
+		$sql_url_recent = "select * from sensor where id_sensor=" . $username;
+		$result_url_recent = mysql_query ( $sql_url_recent );
+		while ( $row_url_recent = mysql_fetch_array ( $result_url_recent ) ) {
+			if($row_url_recent ["isShow"]==1)
+			{
+				return 1;
+			}
+			else {
+				return 0;
+			}
+		}
+	}
+	function isStatisticsBySensor($sensor,$DBHOST, $DBUSER, $DBPWD, $DBNAME)
+	{
+		$link_id = mysql_connect ( $DBHOST, $DBUSER, $DBPWD );
+		mysql_select_db ( $DBNAME );
+		mysql_query ( "set names UTF8" );
+		$sql_url_recent = "select * from sensor where sensor='" . $sensor."'";
+		$result_url_recent = mysql_query ( $sql_url_recent );
+		while ( $row_url_recent = mysql_fetch_array ( $result_url_recent ) ) {
+			if($row_url_recent ["isStatistics"]==1)
+			{
+				return 1;
+			}
+			else {
+				return 0;
+			}
+		}
+	}
+
+
+	//add end
+
+
+	//add by qijl 2015-03-22
+
+	function isStatisticsUrl($url_id,$DBHOST, $DBUSER, $DBPWD, $DBNAME)
+	{
+		$link_id = mysql_connect ( $DBHOST, $DBUSER, $DBPWD );
+		mysql_select_db ( $DBNAME );
+		mysql_query ( "set names UTF8" );
+		$sql_url_recent = "select * from url where id_url=" . $url_id;
+		$result_url_recent = mysql_query ( $sql_url_recent );
+		while ( $row_url_recent = mysql_fetch_array ( $result_url_recent ) ) {
+			if($row_url_recent ["isStatistics"]==1)
+			{
+				return 1;
+			}
+			else {
+				return 0;
+			}
+		}
+	}
+	//add end
+
+
+	//add by qijl 2015-03-22
+
+	function goZhiXinSuanfa($time, $url_id, $url_short, $step_num, $DBHOST, $DBUSER, $DBPWD, $DBNAME, $speedlog_table) {
+		$time_list = array ();
+		$count_list = array ();
+		for($i = 0; $i <= $step_num; $i ++) {
+			$count_list [$i] = 0;
+		}
+
+		$link_id = mysql_connect ( $DBHOST, $DBUSER, $DBPWD );
+		mysql_select_db ( $DBNAME );
+		mysql_query ( "set names UTF8" );
+		$sql_url_recent = "select * from " . $speedlog_table . " where url=" . $url_id;
+		$result_url_recent = mysql_query ( $sql_url_recent );
+		while ( $row_url_recent = mysql_fetch_array ( $result_url_recent ) ) {
+			if ($row_url_recent ["time"] < 0 || $row_url_recent ["time"] >= 30) {
+				continue;
+			} else {
+				// echo $row_url_recent ["time"];
+				// 				echo $row_url_recent["username"]." ";
+				if(isStatistics($row_url_recent["username"],$DBHOST, $DBUSER, $DBPWD, $DBNAME))
+				{
+					array_push ( $time_list, $row_url_recent ["time"] );
+				}
+				// echo 'time_list[' . $i . '] = ' . $row_url_recent ["time"] . '<br>';
+			}
+		}
+		// 		echo  count ( $time_list )."";
+		$sum = 0;
+		for($i = 0; $i < count ( $time_list ); $i ++) {
+			$sum = $sum + $time_list [$i];
+		}
+		if (count ( $time_list )==0) {
+			return 1;
+		}
+		else{
+			$mu = $sum / count ( $time_list );
+				
+			// 求方差
+			$sigma = 0;
+			$sum0 = 0;
+			for($i = 0; $i < count ( $time_list ); $i ++) {
+				$sum0 = $sum0 + ($time_list [$i] - $mu) * ($time_list [$i] - $mu);
+			}
+			$sigma = sqrt ( $sum0 / count ( $time_list ) );
+			// 置信区间上下界
+			$lower = $mu - $sigma * 1.96 / sqrt ( count ( $time_list ) );
+			$heigher = $mu + $sigma * 1.96 / sqrt ( count ( $time_list ) );
+				
+			// echo 'mu = '.$mu.'<br>';
+			// echo 'sigma = '.$sigma.'<br>';
+			// echo 'lower = '.$lower.'<br>';
+			// echo 'heigher = '.$heigher.'<br>';
+				
+			// 最大值，最小值
+			$time_min = min ( $time_list );
+			$time_max = max ( $time_list );
+				
+			// 将数据分成1000
+			if (($time_max - $time_min) != 0) {
+				// $step=($time_max-$time_min)/$step_num;
+					
+				// //每一段的概率密度
+				// $i=0;
+				// while ($i<count($time_list)) {
+					
+				// $temp=($time_list[$i]-$time_min)/$step;
+				// $index=floor($temp);//向下取整
+				// $count_list[$index]++;
+				// $i++;
+				// }
+				// $time=1.065;
+				if ($time > $heigher) {
+					return 0;
+					// 				echo "您访问" . $url_short . "的速度正常";
+				} else {
+					// echo $time;
+					return 1;
+					// 				echo "您访问" . $url_short . "的速度不正常，请联系东北师范大学信息化管理与规划办公室。联系电话：85099005";
+				}
+			} else {
+				// 			echo "您访问的" . $url_short . "速度正常";
+				return 1;
+			}
+		}
+
+
+
+
+	}
+
+	//add end
+
+	function and_func($ip, $mark) {
+		$ip_arr = explode ( ".", $ip );
+		$mark_arr = explode ( ".", $mark );
+		$and = "";
+		for($i = 0; $i < 4; $i ++) {
+			if ($i == 0) {
+				$and = ( int ) $ip_arr [$i] & ( int ) $mark_arr [$i];
+			} else {
+				$and = $and . '.' . (( int ) $ip_arr [$i] & ( int ) $mark_arr [$i]);
+			}
+		}
+		return $and;
+	}
+
+	$username = $_POST ["username"];
+	$time = $_POST ["time"];
+	$start_time = $_POST ["start_time"];
+	$browser = $_SERVER ['HTTP_USER_AGENT'];
+	$ip = getIP ();
+	// $ip = "222.27.105.250";
+	$url = $_POST ["url"];
+	$now = date ( 'Y-m-d H:i:s' );
+	// echo 'url:' . $url . ' username = ' . $username . ' time = ' . $time . ' start_time = ' . date ( 'Y-m-d H:i:s', $start_time ) . ' ip = ' . $ip;
+	$urllist = array ();
+	$link_id = mysql_connect ( $DBHOST, $DBUSER, $DBPWD );
+	mysql_select_db ( $DBNAME );
+	mysql_query ( "set names UTF8" );
+	// 将用户信息直接存入数据库student_speed中
+	$str = "INSERT INTO " . $student_speed . " (student_url,student_speed,student_ip,time)
+        VALUES ('" . $url . "','" . $time . "','" . $ip . "','" . $now . "')";
+	$result = mysql_query ( $str, $link_id );
+	// echo 'result = '.$result.'<br>';
+
+	$sensor_name = "未知地点";
+	$sensor_ip = "";
+	$sensor_speed = "未知速度";
+	$sensor_id = "";
+	$sensor_mark = "";
+	$week_avg = "未知速度";
+
+	// 读取测速点IP
+	$file = 'ip_mark.txt';
+	$content = file_get_contents ( $file );
+	// echo $content.'<br><br><br><br>-------------------------<br>';
+	$array_content = array ();
+	$array_content = explode ( "\n", $content ); //
+	// echo 'array_content.size = '.count($array_content).'<br>';
+	$rel_list = array ();
+	for($i = 0; $i < count ( $array_content ); $i ++) {
+		// echo $array_content[$i].'<br>';
+		$temp = array ();
+		$temp = preg_split ( '/[\s,;]+/', $array_content [$i] );
+		$localhost_arr = and_func ( $ip, $temp [2] );
+		// echo 'localhost_arr='.$localhost_arr.'<br>';
+		$ip_arr = and_func ( $temp [1], $temp [2] );
+		// echo 'ip_arr'.$ip_arr.'<br>';
+		if ($localhost_arr == $ip_arr) {
+			// echo 'in '.$temp[0].'-----------<br>';
+			$sensor_name = $temp [0];
+			$sensor_ip = $temp [1];
+			$sensor_mark = $temp [2];
+			// echo 'sensor_ip= '.$sensor_ip.'<br>';
+			break;
+		} else { // echo 'else<br>';
+			continue;
+		}
+	}
+	// echo $ip_add.'<br>';
+
+	$sql_url = "select * from url";
+	$result_url = mysql_query ( $sql_url );
+	$url_short = "未知网址";
+	while ( $row_url = mysql_fetch_array ( $result_url ) ) {
+		if ($url == $row_url ["url"]) {
+			$url_id = $row_url ["id_url"];
+			$url_short = $row_url ["short_url"];
+			break;
+		}
+	}
+
+	$sensor_recent = array ();
+	$sensorlist = array ();
+	$timelist = array ();
+	$jilin_speed = 0;
+
+	$sql_url_recent = "select * from " . $speedlog_table . " where url=" . $url_id . " order by starttime desc";
+	$result_url_recent = mysql_query ( $sql_url_recent );
+
+	//modify by qijl 2015-03-22
+	$count_forAvg = 0;
+	$time_forAvg= 0;
+	while ( $row_url_recent = mysql_fetch_array ( $result_url_recent ) ) {
+		// 拿到所有测速点当前的速度
+		if (! in_array ( $row_url_recent ["username"], $sensor_recent )) {
+			// 搜索测速点的名字
+			if(isShow($row_url_recent ["username"], $DBHOST, $DBUSER, $DBPWD, $DBNAME))
+			{
+				$sql_sensor_search = "select * from sensor where id_sensor='" . $row_url_recent ["username"] . "'";
+				$result_sensor_search = mysql_query ( $sql_sensor_search );
+				while ( $row_sensor_search = mysql_fetch_array ( $result_sensor_search ) ) {
+					if(isStatistics($row_url_recent ["username"], $DBHOST, $DBUSER, $DBPWD, $DBNAME))
+					{
+						$count_forAvg++;
+						$time_forAvg = $time_forAvg + $row_url_recent ["time"];
+					}
+					array_push ( $sensorlist, $row_sensor_search ["sensor"] );
+					if ($row_url_recent ["time"] == - 1)
+					{
+						array_push ( $timelist, 30 );
+					}
+
+					else{
+						// 						echo $row_url_recent ["time"].'**';
+						array_push ( $timelist, $row_url_recent ["time"] );
+					}
+
+
+					// 如果当前测速点的IP和我楼宇的测速点的IP是一致的，就得到了当前我所在楼宇的IP
+					if ($row_url_recent ["ip"] == $sensor_ip) {
+						$sensor_speed = $row_url_recent ["time"];
+						$sensor_id = $row_url_recent ["username"];
+					}
+					break;
+				}
+			}
+				
+		}
+	}
+	// 	echo $count_forAvg;
+	// 	echo $time_forAvg;
+	if($count_forAvg==0){$time_forAvg=0;}
+	else {$time_forAvg = $time_forAvg / $count_forAvg;}
+	// 	echo $time_forAvg;
+	//modify end
+
+	if ($sensor_id != null) {
+		// 您所在的楼宇测速点一周内访问url的平均速度
+		$week = 7 * 24 * 60 * 60;
+		$begin_time = strtotime ( date ( 'Y-m-d H:i:s', time () ) );
+		$week_avg = 0;
+		$sum = 0;
+		$count = 0;
+		// echo $url_id.' '.$sensor_id.'<br>';
+		$sql_your_sensor_week_avg_speed = "select * from " . $speedlog_table . " where url=" . $url_id . " and username=" . $sensor_id . " order by starttime desc";
+		$result_your_sensor_week_avg_speed = mysql_query ( $sql_your_sensor_week_avg_speed );
+		while ( $row_your_sensor_week_avg_speed = mysql_fetch_array ( $result_your_sensor_week_avg_speed ) ) {
+			// 			echo $row_your_sensor_week_avg_speed["time"]."#################";
+			if (($begin_time - strtotime ( $row_your_sensor_week_avg_speed ["starttime"] )) < $week) {
+				// 				if(isStatisticsUrl($url_id,$DBHOST, $DBUSER, $DBPWD, $DBNAME))
+					// 				{
+				$sum = $sum + $row_your_sensor_week_avg_speed ["time"];
+				$count ++;
+				// 				}
+			} else
+				break;
+		}
+		if ($count == 0) {
+			$week_avg = 0;
+		} else {
+			$week_avg = $sum / $count;
+			// 			echo $sum."****".$count."***";
+			// 			echo $week_avg;
+		}
+	}
+	// 	mysql_close ( $link_id );
+
+	if (isset ( $_POST ['time'] )) {
+		array_push ( $sensorlist, "您的速度" );
+		array_push ( $timelist, $time );
+	}
+
+	if (count ( $sensorlist ) == count ( $timelist )) {
+		$sensor_recent = array_combine ( $sensorlist, $timelist );
+		asort ( $sensor_recent );
+		// print_r($time);
+		?>
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--[if IE7]><script language="javascript" type="text/javascript" src="js/excanvas.js"></script><![endif]-->
+<link rel="stylesheet" type="text/css" href="js/jquery.jqplot.css" />
+<script language="javascript" type="text/javascript"
+	src="js/jquery.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/excanvas.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/jquery.jqplot.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.canvasTextRenderer.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.cursor.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.highlighter.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.dateAxisRenderer.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.categoryAxisRenderer.min.js"></script>
+<script language="javascript" type="text/javascript"
+	src="js/plugins/jqplot.barRenderer.min.js"></script>
+
+
+
+<link rel="stylesheet" type="text/css" href="bootstrap-combined.min.css">
+
+<link rel="stylesheet" type="text/css" href="index.css">
+
+
+
+
+
+<title>student_speed</title>
+</head>
+<body>
+
+
+
+
+<?php
+// require_once('sys_conf.inc.php');
+
+$urlkeylist=array();
+$urlidlist=array();
+// $link_id=mysql_connect($DBHOST,$DBUSER,$DBPWD);
+// mysql_select_db($DBNAME);
+// mysql_query("set names UTF8");
+
+// modify by qijl 2015-03-22
+$sql_url_t="select * from url where isShow='1'";
+$result_url_t=mysql_query($sql_url_t);
+while ($row_url_t=mysql_fetch_array($result_url_t)){
+        array_push($urlkeylist, $row_url_t["short_url"]);
+        array_push($urlidlist, $row_url_t["id_url"]);
+}
+mysql_close($link_id);
+// echo 'urllist size = '.count($urlidlist).'<br>';
+// var_dump($urllist);
+// var_dump($urlnamelist);
+// $url_combine = array_combine($urllist,$urlnamelist);
+// var_dump($url_combine);
+//modify end
+?>
+
+
+<div style="background-color:#f2f2f2;height:75px; vertical-align:middle"><br><img id="search_logo" src="logo2.jpg" width="160px" height="38px">
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<select name="url_name" id="select_url_name" >
+<?php
+echo '<option style="font-size:14px;height:35px;max-width:200px;" value="select">选择您希望测速的网站</option>';
+for ($i=0;$i<count($urlidlist);$i++)
+{
+        echo '<option style="font-size:14px;height:30px;max-width:200px;" value='.$urlidlist[$i].'>'.$urlkeylist[$i].'</option>';
+}
+?>
+</select>
+                        <button  type="submit" value="sss"  onclick="geturl()">
+                                <span style="color:#0000ff">我要测速</span>
+                        </button>
+<script type="text/javascript">
+function geturl()
+{
+        var url=document.getElementById("select_url_name").value;
+        //alert(url);
+        if(url!=""){
+                var nextpage = "student_speed_frame.php?select_url="+url;
+                window.location.href=nextpage;
+                document.form.submit();
+        }
+        else{
+                alert("请选择要测速的网址");
+        }
+}
+</script>
+
+                </div>
+        </div>
+
+
+        </div>
+</div>
+
+<br>
+	<center>
+
+		<script type="text/javascript">
+		$(document).ready(function(){
+			var sensor_time = [];
+			var avg_time=[];
+			<?php
+		$sum_time = 0;
+		foreach ( $sensor_recent as $sensor_s => $time_t ) {
+			echo 'sensor_time.push(["' . $sensor_s . '", "' . $time_t . '"]);';
+			if ($sensor_s == "吉林大学")
+				$jilin_speed = $time_t;
+			$sum_time = $sum_time + $time_t;
+		}
+		$avg_time = $sum_time / count ( $sensor_recent );
+		$avg_time = $time_forAvg;
+// 		 echo 'avg_time = '.$avg_time.'<br>';
+		$sensor_recent_keys = array_keys ( $sensor_recent );
+		// echo '$sensor_recent_keys[0] = '.$sensor_recent_keys[0];
+		// echo '$sensor_recent_keys[count($sensor_recent)-1] = '.$sensor_recent_keys[count($sensor_recent)-1];
+		echo 'avg_time.push(["' . $sensor_recent_keys [0] . '", "' . $avg_time . '"]);';
+		echo 'avg_time.push(["' . $sensor_recent_keys [count ( $sensor_recent ) - 1] . '", "' . $avg_time . '"]);';
+		?>
+
+			//modify by qijl 2015-03-13
+			var plot1 = $.jqplot('chart1', [sensor_time, avg_time,<?php echo $time?>,<?php echo $time?>], {
+				//modify end
+				
+				//modify by qijl 2015-03-12
+		    title: '您测得的速度与学校内测速点测得的速度相比较&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font size="1">测速目标网站：<?php echo $url_short;?></font>',
+			  	//modify end 
+
+		    //add by qijl 2015-03-13
+// 		    #d8b83f
+		    seriesColors: [ "#00AEBE", "#00FF00", "#FF0000","#FF1493"],
+		  	//add end 
+		  	
+			seriesDefaults: {
+				showMarker:false,
+				rendererOptions: {
+					barWidth: 20,
+					varyBarColor : true
+				},
+			},
+		    series:[{renderer:$.jqplot.BarRenderer, label: '参与统计的测速点',seriesColors: [
+			    <?php
+		for($i = 0; $i < count ( $sensor_recent_keys ); $i ++) {
+			if ($sensor_recent_keys [$i] == "您的速度") {
+				if ($i == count ( $sensor_recent_keys ) - 1)
+					echo '"#FF0000"';
+				else
+					echo '"#FF0000",';
+			} else {
+				if ($i == count ( $sensor_recent_keys ) - 1)
+				{
+					if (isStatisticsBySensor($sensor_recent_keys[$i], $DBHOST, $DBUSER, $DBPWD, $DBNAME)==1)
+						echo '"#00AEBE"';
+					else
+						echo '"#FF1493"';
+				}
+				else
+				{
+					if (isStatisticsBySensor($sensor_recent_keys[$i], $DBHOST, $DBUSER, $DBPWD, $DBNAME)==1)
+						echo '"#00AEBE",';
+					else
+						echo '"#FF1493",';
+				}
+			}
+		}
+		?>
+					//modify by qijl 2015-03-13
+				    ]}, {xaxis:'xaxis', yaxis:'yaxis',label: '平均速度'},{xaxis:'xaxis', yaxis:'yaxis',label: '您的速度'},{xaxis:'xaxis', yaxis:'yaxis',label: '不参与统计的测速点'}],
+					//modify end
+					
+			axesDefaults: {
+		        tickRenderer: $.jqplot.CanvasAxisTickRenderer ,
+		        tickOptions: {
+		          angle: -30,
+		          fontSize: '10pt'
+ 		        }
+		    },
+		    axes: {
+		      xaxis: {
+// 		    	label: "测速点",
+ 		        renderer: $.jqplot.CategoryAxisRenderer,
+		        tickRenderer: $.jqplot.CanvasAxisTickRenderer
+		      },
+		      yaxis: {
+				label: "耗时(秒)",
+// 				autoscale:true,
+		 		min: 0,      // 横（纵）坐标显示的最小值  
+				max: <?php echo ($timeout/1000);?>,
+				//add by qijl 2015-03-19
+		        numberTicks: 7
+		        //add end
+				
+		      }
+		    },
+		    legend: {
+				show: true,//设置是否出现分类名称框(即所有分类的名称出现在图的某个位置)
+				location: 'ne', //分类名称框出现位置, nw, n, ne, e, se, s, sw, w.
+				xoffset: 12, //分类名称框距图表区域上边框的距离(单位px)
+				yoffset: 12, //分类名称框距图表区域左边框的距离(单位px)
+				background:'#FF0000', //分类名称框距图表区域背景色
+				textColor:'#FF0000' //分类名称框距图表区域内字体颜色
+			}
+		  });
+		});
+		</script>
+
+		<div id="chart1" style="position: relative; height: 60%; width: 80%;"></div>
+		<br> <br>
+
+		<table width="70%" bgcolor="#ff0000">
+			<tr>
+				<td>
+	<strong>测速报告：</strong><br><br>
+	
+
+             <?php
+		 if(goZhiXinSuanfa ( $time, $url_id, $url_short, $step_num, $DBHOST, $DBUSER, $DBPWD, $DBNAME, $speedlog_table )==1)
+		 {
+		 	echo "您的速度<font color='#ff0000'>正常</font>";
+		 }else{
+			echo "您的速度<font color='#ff0000'>不正常</font>&nbsp;请联系信息化办。&nbsp;电话：85099005。";
+		}
+		?><br>
+		数据一：固定测速点访问&nbsp;<?php echo $url_short;?>&nbsp;的最快速度为&nbsp;<?php
+		if ($sensor_recent_keys [0] == "您的速度" && $sensor_recent_keys > 0 && count($sensor_recent_keys) > 1) {
+		/*	echo $sensor_recent_keys [1] . '&nbsp;'; */
+			echo sprintf ( "%.2f", $sensor_recent [$sensor_recent_keys [1]] );
+		} else {
+		/*	echo $sensor_recent_keys [0] . '&nbsp;'; */
+			echo sprintf ( "%.2f", $sensor_recent [$sensor_recent_keys [0]] );
+		}
+		?>秒<br>
+		数据二：固定测速点访问&nbsp;<?php echo $url_short;?>&nbsp;的最慢速度为&nbsp;<?php
+		if ($sensor_recent_keys [count ( $sensor_recent_keys ) - 1] == "您的速度" && $sensor_recent_keys > 0 && count($sensor_recent_keys) > 1) {
+		/*	echo $sensor_recent_keys [count ( $sensor_recent_keys ) - 2] . '&nbsp;'; */
+			echo sprintf ( "%.2f", $sensor_recent [$sensor_recent_keys [count ( $sensor_recent_keys ) - 2]] );
+		} else {
+		/*	echo $sensor_recent_keys [count ( $sensor_recent_keys ) - 1] . '&nbsp;'; */
+			echo sprintf ( "%.2f", $sensor_recent [$sensor_recent_keys [count ( $sensor_recent_keys ) - 1]] );
+		}
+		?>秒<br>
+		数据三：全校访问&nbsp;<?php echo $url_short;?>&nbsp;的平均速度为&nbsp;<?php echo sprintf("%.2f",$avg_time);?>秒<br>
+                数据四：吉林大学访问&nbsp;<?php echo $url_short;?>&nbsp;的速度为&nbsp;<?php echo sprintf("%.2f", $jilin_speed);?>秒<br>	
+				<!-- 		modify end -->
+
+
+				</td>
+				<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+	         <td><strong>延伸阅读：</strong> <br>
+
+                  <br>为了更加客观的理解您的网速，欢迎您花时间阅读以下内容。
+		  <br>我们对网速问题负有有限责任，包括：
+		  <br>(1)利用可能的技术手段对学校有效的总带宽进行合理与充分的利用。
+		  <br>(2)确保室内墙壁网络接口以上的链路稳定与畅通。
+		  <br>(3)确保不同用户的网速差别处于合理区间。
+
+		 </td></tr>	
+
+             </table>
+	</center>
+<?php
+	} else
+		echo 'search wrong';
+	?>
+</body>
+</html>
+<?php
+} else {
+	header ( 'Location: student_speed_select_url.php' );
+}
+
+?>
